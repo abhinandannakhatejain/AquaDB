@@ -131,5 +131,37 @@ if (!$conn || $conn->connect_error) {
             }
         }
     }
+
+    // Self-healing: Ensure AUTO_INCREMENT is enabled on all primary keys
+    $aiCheck = @$conn->query("SELECT EXTRA FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'complaints' AND COLUMN_NAME = 'complaint_id'");
+    if ($aiCheck && ($row = $aiCheck->fetch_assoc())) {
+        if (empty($row['EXTRA']) || strpos($row['EXTRA'], 'auto_increment') === false) {
+            $alters = [
+                "ALTER TABLE `complaints` ADD PRIMARY KEY (`complaint_id`)",
+                "ALTER TABLE `area_statistics` ADD PRIMARY KEY (`statistics_id`)",
+                "ALTER TABLE `complaint_assignments` ADD PRIMARY KEY (`assignment_id`)",
+                "ALTER TABLE `complaint_categories` ADD PRIMARY KEY (`category_id`)",
+                "ALTER TABLE `feedback` ADD PRIMARY KEY (`feedback_id`)",
+                "ALTER TABLE `locations` ADD PRIMARY KEY (`location_id`)",
+                "ALTER TABLE `officers` ADD PRIMARY KEY (`officer_id`)",
+                "ALTER TABLE `users` ADD PRIMARY KEY (`user_id`)",
+                "ALTER TABLE `water_alerts` ADD PRIMARY KEY (`alert_id`)",
+                "ALTER TABLE `water_quality_readings` ADD PRIMARY KEY (`reading_id`)",
+                "ALTER TABLE `complaints` MODIFY `complaint_id` int(11) NOT NULL AUTO_INCREMENT",
+                "ALTER TABLE `area_statistics` MODIFY `statistics_id` int(11) NOT NULL AUTO_INCREMENT",
+                "ALTER TABLE `complaint_assignments` MODIFY `assignment_id` int(11) NOT NULL AUTO_INCREMENT",
+                "ALTER TABLE `complaint_categories` MODIFY `category_id` int(11) NOT NULL AUTO_INCREMENT",
+                "ALTER TABLE `feedback` MODIFY `feedback_id` int(11) NOT NULL AUTO_INCREMENT",
+                "ALTER TABLE `locations` MODIFY `location_id` int(11) NOT NULL AUTO_INCREMENT",
+                "ALTER TABLE `officers` MODIFY `officer_id` int(11) NOT NULL AUTO_INCREMENT",
+                "ALTER TABLE `users` MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT",
+                "ALTER TABLE `water_alerts` MODIFY `alert_id` int(11) NOT NULL AUTO_INCREMENT",
+                "ALTER TABLE `water_quality_readings` MODIFY `reading_id` int(11) NOT NULL AUTO_INCREMENT"
+            ];
+            foreach ($alters as $q) {
+                @$conn->query($q);
+            }
+        }
+    }
 }
 ?>
