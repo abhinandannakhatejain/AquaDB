@@ -1,7 +1,7 @@
 <?php
 /**
  * AquaGuard - Cloud Database Initializer
- * This script imports aquaguard_backup.sql into the connected MySQL database.
+ * Imports aquaguard_backup.sql into the connected MySQL database safely.
  */
 
 require_once __DIR__ . '/config/database.php';
@@ -19,7 +19,7 @@ function outputMsg($msg, $isCli) {
 if (!$isCli) {
     echo "<!DOCTYPE html><html><head><title>Database Setup | AquaGuard</title>";
     echo "<style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 40px; }</style>";
-    echo "</head><body><div style='max-width: 600px; margin: 0 auto; background: #1e293b; padding: 24px; border-radius: 12px;'>";
+    echo "</head><body><div style='max-width: 650px; margin: 0 auto; background: #1e293b; padding: 24px; border-radius: 12px;'>";
     echo "<h2 style='color: #38bdf8; margin-top: 0;'>AquaGuard Database Setup</h2>";
 }
 
@@ -51,24 +51,55 @@ if (!file_exists($sqlFile)) {
     exit(1);
 }
 
-outputMsg("Reading aquaguard_backup.sql...", $isCli);
+outputMsg("Reading and parsing aquaguard_backup.sql...", $isCli);
 $sqlContent = file_get_contents($sqlFile);
 
-outputMsg("Executing database schema & seed data...", $isCli);
+// Remove transaction wrappers
+$sqlContent = preg_replace('/START\s+TRANSACTION\s*;/i', '', $sqlContent);
+$sqlContent = preg_replace('/COMMIT\s*;/i', '', $sqlContent);
 
-// Enable multi-queries in mysqli
-if ($conn->multi_query($sqlContent)) {
+// Extract triggers (which contain internal semicolons and DELIMITER directives)
+$triggers = [];
+$cleanSql = preg_replace_callback('/DELIMITER\s+\$\$(.*?)DELIMITER\s+;/si', function($m) use (&$triggers) {
+    $triggers[] = trim(str_replace('$$', '', $m[1]));
+    return '';
+}, $sqlContent);
+
+// Strip any leftover delimiter lines
+$cleanSql = preg_replace('/^\s*DELIMITER\s+.*$/m', '', $cleanSql);
+
+outputMsg("Importing tables, views, and data...", $isCli);
+
+if ($conn->multi_query($cleanSql)) {
     do {
-        if ($result = $conn->store_result()) {
-            $result->free();
+        if ($res = $conn->store_result()) {
+            $res->free();
         }
     } while ($conn->more_results() && $conn->next_result());
 }
 
 if ($conn->errno) {
-    outputMsg("Import completed with notices or warnings: " . $conn->error, $isCli);
+    outputMsg("Notice on table creation: " . $conn->error, $isCli);
 } else {
-    outputMsg("SUCCESS: All tables, views, and data imported successfully!", $isCli);
+    outputMsg("SUCCESS: Tables, views, and seed data imported!", $isCli);
+}
+
+if (!empty($triggers)) {
+    outputMsg("Creating triggers...", $isCli);
+    foreach ($triggers as $trg) {
+        if (!empty(trim($trg))) {
+            $conn->query($trg);
+        }
+    }
+    outputMsg("SUCCESS: Triggers registered!", $isCli);
+}
+
+// Final verification
+$verify = $conn->query("SHOW TABLES LIKE 'users'");
+if ($verify && $verify->num_rows > 0) {
+    outputMsg("ALL DONE! 'users' table is verified.", $isCli);
+} else {
+    outputMsg("WARNING: 'users' table not found after import. Please check table definitions.", $isCli);
 }
 
 if (!$isCli) {

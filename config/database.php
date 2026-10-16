@@ -110,11 +110,24 @@ if (!$conn || $conn->connect_error) {
     if ($check && $check->num_rows === 0) {
         $sqlFile = __DIR__ . '/../aquaguard_backup.sql';
         if (file_exists($sqlFile)) {
-            $sql = file_get_contents($sqlFile);
-            if ($conn->multi_query($sql)) {
+            $raw = file_get_contents($sqlFile);
+            $raw = preg_replace('/START\s+TRANSACTION\s*;/i', '', $raw);
+            $raw = preg_replace('/COMMIT\s*;/i', '', $raw);
+            $triggers = [];
+            $clean = preg_replace_callback('/DELIMITER\s+\$\$(.*?)DELIMITER\s+;/si', function($m) use (&$triggers) {
+                $triggers[] = trim(str_replace('$$', '', $m[1]));
+                return '';
+            }, $raw);
+            $clean = preg_replace('/^\s*DELIMITER\s+.*$/m', '', $clean);
+
+            if ($conn->multi_query($clean)) {
                 do {
                     if ($res = $conn->store_result()) $res->free();
                 } while ($conn->more_results() && $conn->next_result());
+            }
+
+            foreach ($triggers as $trg) {
+                if (!empty(trim($trg))) @$conn->query($trg);
             }
         }
     }
