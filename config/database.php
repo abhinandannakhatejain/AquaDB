@@ -104,5 +104,19 @@ if (!$conn || $conn->connect_error) {
     die("Database connection failed: " . htmlspecialchars($err) . $hint);
 } else {
     $conn->set_charset("utf8mb4");
+
+    // Auto-seed tables from aquaguard_backup.sql on first run if database is empty
+    $check = @$conn->query("SHOW TABLES LIKE 'users'");
+    if ($check && $check->num_rows === 0) {
+        $sqlFile = __DIR__ . '/../aquaguard_backup.sql';
+        if (file_exists($sqlFile)) {
+            $sql = file_get_contents($sqlFile);
+            if ($conn->multi_query($sql)) {
+                do {
+                    if ($res = $conn->store_result()) $res->free();
+                } while ($conn->more_results() && $conn->next_result());
+            }
+        }
+    }
 }
 ?>
