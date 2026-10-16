@@ -1,11 +1,7 @@
 <?php
 session_start();
 
-$conn = new mysqli("localhost", "root", "", "aquaguard");
-
-if ($conn->connect_error) {
-    die("Database connection failed: " . $conn->connect_error);
-}
+require_once __DIR__ . "/../config/database.php";
 
 /* Get logged-in user */
 $user_id = $_SESSION['user_id'] ?? 2;

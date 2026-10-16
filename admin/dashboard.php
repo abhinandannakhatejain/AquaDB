@@ -3,13 +3,7 @@
 // AquaGuard - Admin Dashboard
 // =====================================================
 
-// Database connection
-$conn = new mysqli("localhost", "root", "", "aquaguard");
-
-// Check database connection
-if ($conn->connect_error) {
-    die("Database connection failed: " . $conn->connect_error);
-}
+require_once __DIR__ . "/../config/database.php";
 
 
 // =====================================================

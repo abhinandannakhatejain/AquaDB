@@ -400,7 +400,7 @@ DELIMITER ;
 --
 DROP TABLE IF EXISTS `vw_complaint_dashboard`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_complaint_dashboard`  AS SELECT `c`.`complaint_id` AS `complaint_id`, `u`.`name` AS `citizen`, `cc`.`category_name` AS `category_name`, `l`.`area_name` AS `area_name`, `l`.`city` AS `city`, `c`.`description` AS `description`, `c`.`priority` AS `priority`, `c`.`status` AS `status`, `c`.`created_at` AS `created_at`, `c`.`resolved_at` AS `resolved_at` FROM (((`complaints` `c` join `users` `u` on(`c`.`user_id` = `u`.`user_id`)) join `complaint_categories` `cc` on(`c`.`category_id` = `cc`.`category_id`)) join `locations` `l` on(`c`.`location_id` = `l`.`location_id`)) ;
+CREATE VIEW `vw_complaint_dashboard` AS SELECT `c`.`complaint_id` AS `complaint_id`, `u`.`name` AS `citizen`, `cc`.`category_name` AS `category_name`, `l`.`area_name` AS `area_name`, `l`.`city` AS `city`, `c`.`description` AS `description`, `c`.`priority` AS `priority`, `c`.`status` AS `status`, `c`.`created_at` AS `created_at`, `c`.`resolved_at` AS `resolved_at` FROM (((`complaints` `c` join `users` `u` on(`c`.`user_id` = `u`.`user_id`)) join `complaint_categories` `cc` on(`c`.`category_id` = `cc`.`category_id`)) join `locations` `l` on(`c`.`location_id` = `l`.`location_id`)) ;
 
 -- --------------------------------------------------------
 
@@ -409,7 +409,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `vw_water_dashboard`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_water_dashboard`  AS SELECT `w`.`reading_id` AS `reading_id`, `l`.`area_name` AS `area_name`, `l`.`city` AS `city`, `w`.`ph` AS `ph`, `w`.`turbidity` AS `turbidity`, `w`.`tds` AS `tds`, `w`.`temperature` AS `temperature`, `w`.`risk_level` AS `risk_level`, `w`.`recorded_at` AS `recorded_at` FROM (`water_quality_readings` `w` join `locations` `l` on(`w`.`location_id` = `l`.`location_id`)) ;
+CREATE VIEW `vw_water_dashboard` AS SELECT `w`.`reading_id` AS `reading_id`, `l`.`area_name` AS `area_name`, `l`.`city` AS `city`, `w`.`ph` AS `ph`, `w`.`turbidity` AS `turbidity`, `w`.`tds` AS `tds`, `w`.`temperature` AS `temperature`, `w`.`risk_level` AS `risk_level`, `w`.`recorded_at` AS `recorded_at` FROM (`water_quality_readings` `w` join `locations` `l` on(`w`.`location_id` = `l`.`location_id`)) ;
 
 --
 -- Indexes for dumped tables
