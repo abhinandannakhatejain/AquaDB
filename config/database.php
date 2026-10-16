@@ -20,15 +20,24 @@ function getDbEnv($key, $default = '') {
 }
 
 $databaseUrl = getDbEnv('MYSQL_URL', getDbEnv('DATABASE_URL'));
+$databaseUrl = trim($databaseUrl, "\"' \t\n\r\0\x0B");
 
-if ($databaseUrl && strpos($databaseUrl, 'mysql') === 0) {
+if ($databaseUrl && strpos($databaseUrl, '${{') === 0) {
+    die("Database configuration error: Railway variable reference <code>" . htmlspecialchars($databaseUrl) . "</code> was not resolved by Railway.<br><br><strong>Fix:</strong> In Railway, open your <strong>MySQL</strong> service &rarr; click <strong>Variables</strong> &rarr; copy the actual value of <strong>MYSQL_URL</strong> (starts with <code>mysql://...</code>) and paste it into your AquaDB service's <strong>MYSQL_URL</strong>.");
+}
+
+if ($databaseUrl && (strpos($databaseUrl, 'mysql') === 0 || strpos($databaseUrl, '://') !== false)) {
     $parsed = parse_url($databaseUrl);
-    $host = $parsed['host'] ?? '127.0.0.1';
-    $port = intval($parsed['port'] ?? 3306);
-    $username = $parsed['user'] ?? 'root';
-    $password = $parsed['pass'] ?? '';
-    $dbname = isset($parsed['path']) ? ltrim($parsed['path'], '/') : 'aquaguard';
-} else {
+    if (!empty($parsed['host'])) {
+        $host = $parsed['host'];
+        $port = intval($parsed['port'] ?? 3306);
+        $username = $parsed['user'] ?? 'root';
+        $password = isset($parsed['pass']) ? urldecode($parsed['pass']) : '';
+        $dbname = isset($parsed['path']) ? ltrim($parsed['path'], '/') : 'aquaguard';
+    }
+}
+
+if (!isset($host)) {
     $host = getDbEnv('MYSQLHOST', getDbEnv('DB_HOST', '127.0.0.1'));
     $port = intval(getDbEnv('MYSQLPORT', getDbEnv('DB_PORT', 3306)));
     $dbname = getDbEnv('MYSQLDATABASE', getDbEnv('DB_NAME', 'aquaguard'));
