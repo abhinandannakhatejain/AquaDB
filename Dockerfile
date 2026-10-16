@@ -15,8 +15,8 @@ COPY . /var/www/html/
 # Ensure proper permissions
 RUN chown -R www-data:www-data /var/www/html
 
-# Startup script to dynamically adapt Apache listening port to $PORT and ensure clean MPM startup
-RUN printf '#!/bin/sh\nPORT="${PORT:-80}"\nsed -i "s/80/$PORT/g" /etc/apache2/ports.conf /etc/apache2/sites-available/000-default.conf\na2dismod mpm_event mpm_worker 2>/dev/null || true\na2enmod mpm_prefork 2>/dev/null || true\nexec apache2-foreground\n' > /usr/local/bin/start-app.sh && chmod +x /usr/local/bin/start-app.sh
+# Startup script to dynamically adapt Apache listening port to $PORT, forward env vars, and ensure clean MPM startup
+RUN printf '#!/bin/sh\nPORT="${PORT:-80}"\nsed -i "s/80/$PORT/g" /etc/apache2/ports.conf /etc/apache2/sites-available/000-default.conf\na2dismod mpm_event mpm_worker 2>/dev/null || true\na2enmod mpm_prefork 2>/dev/null || true\necho "variables_order = \\\"EGPCS\\\"" > /usr/local/etc/php/conf.d/docker-vars.ini\nenv | grep -E "^(MYSQL|DB_|DATABASE_)" > /var/www/html/config/.cloud_env\nenv | grep -E "^(MYSQL|DB_|DATABASE_)" | cut -d= -f1 | sed "s/^/PassEnv /" > /etc/apache2/conf-available/docker-env.conf\na2enconf docker-env 2>/dev/null || true\nexec apache2-foreground\n' > /usr/local/bin/start-app.sh && chmod +x /usr/local/bin/start-app.sh
 
 EXPOSE 80
 

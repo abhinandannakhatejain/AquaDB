@@ -1,11 +1,21 @@
 <?php
 
-// Helper to read env vars across getenv, $_ENV, and $_SERVER
+// Helper to read env vars across getenv, $_ENV, $_SERVER, and container boot file
 function getDbEnv($key, $default = '') {
     $val = getenv($key);
     if ($val !== false && $val !== '') return $val;
     if (isset($_ENV[$key]) && $_ENV[$key] !== '') return $_ENV[$key];
     if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') return $_SERVER[$key];
+
+    static $cloudEnv = null;
+    if ($cloudEnv === null) {
+        $envFile = __DIR__ . '/.cloud_env';
+        $cloudEnv = file_exists($envFile) ? @parse_ini_file($envFile) : [];
+    }
+    if (is_array($cloudEnv) && isset($cloudEnv[$key]) && $cloudEnv[$key] !== '') {
+        return $cloudEnv[$key];
+    }
+
     return $default;
 }
 
