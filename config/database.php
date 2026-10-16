@@ -33,7 +33,13 @@ if ($databaseUrl && (strpos($databaseUrl, 'mysql') === 0 || strpos($databaseUrl,
         $port = intval($parsed['port'] ?? 3306);
         $username = $parsed['user'] ?? 'root';
         $password = isset($parsed['pass']) ? urldecode($parsed['pass']) : '';
-        $dbname = isset($parsed['path']) ? ltrim($parsed['path'], '/') : 'aquaguard';
+        $rawDb = isset($parsed['path']) ? ltrim($parsed['path'], '/') : '';
+        $rawDb = preg_replace('/mysql:\/\/.*$/', '', $rawDb);
+        if (preg_match('/^([a-zA-Z0-9_]+)/', $rawDb, $m)) {
+            $dbname = $m[1];
+        } else {
+            $dbname = 'railway';
+        }
     }
 }
 
@@ -45,7 +51,35 @@ if (!isset($host)) {
     $password = getDbEnv('MYSQLPASSWORD', getDbEnv('DB_PASSWORD', getDbEnv('DB_PASS', '')));
 }
 
-// 1. PDO Connection
+// 1. MySQLi Connection with auto-healing for database name
+mysqli_report(MYSQLI_REPORT_OFF);
+$conn = @new mysqli($host, $username, $password, $dbname, $port);
+
+// If error 1049 (Unknown database), connect to server and find/create database
+if ($conn->connect_errno === 1049 || ($conn->connect_error && strpos($conn->connect_error, 'Unknown database') !== false)) {
+    $serverConn = @new mysqli($host, $username, $password, "", $port);
+    if ($serverConn && !$serverConn->connect_error) {
+        $res = $serverConn->query("SHOW DATABASES");
+        $dbs = [];
+        if ($res) {
+            while ($row = $res->fetch_row()) {
+                $dbs[] = $row[0];
+            }
+        }
+        if (in_array('railway', $dbs)) {
+            $dbname = 'railway';
+        } elseif (in_array('aquaguard', $dbs)) {
+            $dbname = 'aquaguard';
+        } else {
+            $serverConn->query("CREATE DATABASE IF NOT EXISTS aquaguard");
+            $dbname = 'aquaguard';
+        }
+        $serverConn->select_db($dbname);
+        $conn = $serverConn;
+    }
+}
+
+// 2. PDO Connection
 $pdo = null;
 $pdo_error = null;
 try {
@@ -60,15 +94,6 @@ try {
     );
 } catch (PDOException $e) {
     $pdo_error = $e->getMessage();
-}
-
-// 2. MySQLi Connection
-mysqli_report(MYSQLI_REPORT_OFF);
-try {
-    $conn = @new mysqli($host, $username, $password, $dbname, $port);
-} catch (Throwable $e) {
-    $conn = null;
-    $mysqli_error = $e->getMessage();
 }
 
 if (!$conn || $conn->connect_error) {
